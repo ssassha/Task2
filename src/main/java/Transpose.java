@@ -10,23 +10,17 @@ import java.util.*;
 
 public class Transpose {
 
-    private boolean isA = false;
-    private int numSym = 10;
-
     @Option(name = "-o", usage = "Output name")
     private String outputName;
 
     @Option(name = "-a", usage = "Number of symbols")
-    private void setNum(int n) {
-        numSym = n;
-        isA = true;
-    }
+    private int numSym;
 
     @Option(name = "-t", usage = "Cut or do not cut")
-    private boolean cut = true;
+    private boolean cut;
 
     @Option(name = "-r", usage = "Right")
-    private boolean right = true;
+    private boolean right;
 
     @Argument(usage = "Input file")
     private String inputName;
@@ -49,6 +43,7 @@ public class Transpose {
         transpose(inputName, outputName);
     }
 
+    int maxSize = 0;
     private void transpose(String inputName, String outputName) throws IOException {
         StringBuilder input = new StringBuilder();
         if (inputName == null) {
@@ -56,6 +51,7 @@ public class Transpose {
             System.out.println("Enter initial data or \"END\" to complete the input:");
             String str = sc.nextLine();
             while (sc.hasNext() && !str.equals("END")) {
+                if (maxSize < str.split(" ").length) maxSize = str.split(" ").length;
                 input.append(str).append("\n");
                 str = sc.nextLine();
                 if (str.equals("END")) break;
@@ -64,91 +60,81 @@ public class Transpose {
             try(BufferedReader reader = new BufferedReader(new FileReader(inputName))) {
                 String str = reader.readLine();
                 while (str != null) {
+                    if (maxSize < str.split(" ").length) maxSize = str.split(" ").length;
                     input.append(str).append("\n");
                     str = reader.readLine();
                 }
             }
         }
-        List<List<String>> matrix = new ArrayList<>();
+        ArrayList<ArrayList<String>> matrix = new ArrayList<>();
         String[] st = input.toString().split("\n");
-        int maxSize = 0;
-        for (int i = 0; i < st.length; i++) {
-            matrix.add(Arrays.asList((st[i].split(" "))));
-            if (st[i].split(" ").length > maxSize) maxSize = st[i].split(" ").length;
-        }
-        /*if (outputName == null) {
-            for (int i = 0; i < matrix.size(); i++) {
-                System.out.println(matrix.get(i).toString().split(" "));
-            }
-        }*/
-        if (outputName == null) {
-            for (int i = 0; i < matrix.size(); i++) {
-                for (int j = 0; j < matrix.get(i).size(); j++) {
-                    System.out.print(matrix.get(i).get(j) + " ");
-                }
-                System.out.print("\n");
-            }
+        for (String s : st) {
+            matrix.add(new ArrayList<>(Arrays.asList(s.split(" "))));
         }
         transposeMatrix(matrix, maxSize);
     }
-    List<String[]> result = new ArrayList<>();
-    private void transposeMatrix(List<List<String>> matrix, int maxSize) {
-        int k = 0;
-        String str = new String();
+    ArrayList<ArrayList<String>> result = new ArrayList<>();
+    private void transposeMatrix(ArrayList<ArrayList<String>> matrix, int maxSize) {
         for (int i = 0; i < maxSize; i++) {
-            //result.add(Collections.emptyList());
-            for (List<String> strings : matrix) {
-                if (strings.size() > k) {
-                    str += strings.get(k) + " ";
-                    //result.get(i).add(strings.get(k));
-                } else {
-                    str += " " + " ";
-                    //result.get(i).add("");
-                }
-            }
-            k++;
-            //System.out.println(str);
-            result.add(str.split(" "));
-            str = "";
-        }
-        if (outputName == null) {
-            for (int i = 0; i < result.size(); i++) {
-                for (int j = 0; j < result.get(i).length; j++) {
-                    System.out.print(result.get(i)[j] + " ");
-                }
-                System.out.print("\n");
+            result.add(new ArrayList<>());
+            for (ArrayList<String> strings : matrix) {
+                if (strings.size() > i) result.get(i).add(strings.get(i));
+                else result.get(i).add(" ");
             }
         }
-        format(result, isA, numSym, cut, right);
+        if (numSym == 0 && (cut || right)) numSym = 10;
+        format(result, numSym, cut, right);
         if (outputName == null) {
             for (int i = 0; i < result.size(); i++) {
-                for (int j = 0; j < result.get(i).length; j++) {
-                    System.out.print(result.get(i)[j] + " ");
+                StringBuilder str = new StringBuilder();
+                for (int j = 0; j < result.get(i).size(); j++) {
+                    System.out.print(result.get(i).get(j));
+                    if (j + 1 < result.get(i).size()) System.out.print(" ");
                 }
-                System.out.print("\n");
+                if (i + 1 < result.size()) System.out.print("\n");
+
+            }
+        }
+        else {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputName))){
+                for (int i = 0; i < result.size(); i++) {
+                    for (int j = 0; j < result.get(i).size(); j++) {
+                        writer.write(result.get(i).get(j));
+                        if (j + 1 < result.get(i).size()) writer.write(" ");
+                    }
+                    if (i + 1 < result.size()) writer.write("\n");
+                }
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
             }
         }
     }
-    private void format(List<String[]> result, boolean isA, int numSym, boolean cut, boolean right) {
-        for (int i = 0; i < result.size(); i++) {
-            for (int j = 0; j < result.get(i).length; j++) {
-                if (result.get(i)[j].length() > numSym) {
-                    if (right && cut) result.get(i)[j] = result.get(i)[j].substring(result.get(i)[j].length() - numSym);
-                    if (cut) result.get(i)[j] = result.get(i)[j].substring(0, result.get(i)[j].length() - numSym);
-                }
-                else {
-                    if (right) {
-                        for (int y = 0; y < (numSym - result.get(i)[j].length() + 1); y++) {
-                            result.get(i)[j] = " " + result.get(i)[j];
-                        }
-                    }
-                    else if (isA) {
-                        for (int y = 0; y < (numSym - result.get(i)[j].length() + 1); y++) {
-                            result.get(i)[j] += " ";
-                        }
-                    }
-                    }
-                }
+    private void format(ArrayList<ArrayList<String>> result, int numSym, boolean cut, boolean right) {
+        for (ArrayList<String> strings : result) {
+            for (int j = 0; j < strings.size(); j++) {
+                String word = strings.get(j);
+                if (word.length() > numSym && cut) word = cut(word, numSym);
+                if (word.length() < numSym && right) word = rightSpaces(word, numSym);
+                if (word.length() < numSym) word = leftSpaces(word, numSym);
+                strings.set(j, word);
             }
+        }
+    }
+
+    private String cut(String word, int numSym) {
+        String newWord;
+        if (right) newWord = word.substring(word.length() - numSym);
+        else newWord = word.substring(0, numSym);
+        return newWord;
+    }
+    private String rightSpaces(String word, int numSym) {
+        StringBuilder newWord = new StringBuilder(word);
+        while (newWord.length() < numSym) newWord.insert(0, " ");
+        return newWord.toString();
+    }
+    private String leftSpaces(String word, int numSym) {
+        StringBuilder newWord = new StringBuilder(word);
+        while (newWord.length() < numSym) newWord.append(" ");
+        return newWord.toString();
     }
 }
